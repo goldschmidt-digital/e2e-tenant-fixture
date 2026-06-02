@@ -17,7 +17,7 @@ spec:
     spec:
       containers:
         - name: app
-          image: ghcr.io/goldschmidt-digital/e2e-tenant-fixture/e2e-app:sha-0130d28  # yamllint disable-line rule:line-length
+          image: ghcr.io/goldschmidt-digital/e2e-tenant-fixture/e2e-app:sha-bbd8257  # yamllint disable-line rule:line-length
           ports:
             - containerPort: 80
           livenessProbe:
