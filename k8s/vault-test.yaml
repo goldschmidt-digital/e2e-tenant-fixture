@@ -1,0 +1,48 @@
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: e2e-vault-test
+  labels:
+    app: e2e-vault-test
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: e2e-vault-test
+  template:
+    metadata:
+      labels:
+        app: e2e-vault-test
+      annotations:
+        vault.hashicorp.com/agent-inject: "true"
+        vault.hashicorp.com/role: "e2e-app"
+        vault.hashicorp.com/agent-pre-populate-only: "false"
+        vault.hashicorp.com/agent-inject-secret-config: "secret/platform/e2e-tenant/config"  # yamllint disable-line rule:line-length
+        vault.hashicorp.com/agent-inject-template-config: |
+          {{- with secret "secret/platform/e2e-tenant/config" -}}
+          TEST_VALUE={{ .Data.data.value }}
+          {{- end }}
+    spec:
+      serviceAccountName: e2e-app
+      containers:
+        - name: app
+          image: busybox:1.37
+          command: ["/bin/sh", "-c", "while true; do sleep 30; done"]
+          livenessProbe:
+            exec:
+              command: ["test", "-f", "/vault/secrets/config"]
+            initialDelaySeconds: 10
+            periodSeconds: 10
+          readinessProbe:
+            exec:
+              command: ["test", "-f", "/vault/secrets/config"]
+            initialDelaySeconds: 5
+            periodSeconds: 5
+          resources:
+            requests:
+              cpu: "10m"
+              memory: "16Mi"
+            limits:
+              cpu: "50m"
+              memory: "32Mi"

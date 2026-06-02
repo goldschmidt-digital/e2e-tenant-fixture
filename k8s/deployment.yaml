@@ -1,3 +1,4 @@
+---
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -16,7 +17,7 @@ spec:
     spec:
       containers:
         - name: app
-          image: nginx:1.27-alpine
+          image: ghcr.io/goldschmidt-digital/e2e-tenant-fixture/e2e-app:sha-placeholder  # yamllint disable-line rule:line-length
           ports:
             - containerPort: 80
           livenessProbe:
