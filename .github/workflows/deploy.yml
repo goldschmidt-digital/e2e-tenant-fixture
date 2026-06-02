@@ -13,12 +13,57 @@ permissions:
 
 jobs:
   deploy:
-    uses: goldschmidt-digital/k3s-goldschmidt-platform/.github/workflows/platform-deploy.yml@main  # yamllint disable-line rule:line-length
-    with:
-      service: e2e-app
-      dockerfile: Dockerfile
-      context: .
-      manifest_path: k8s/deployment.yaml
-      image_repo: ghcr.io/goldschmidt-digital/e2e-tenant-fixture/e2e-app
-      target_branch: main
-    secrets: inherit
+    name: Build, Push, and Commit SHA
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+        with:
+          ref: main
+          fetch-depth: 0
+
+      - name: Set short SHA
+        run: echo "SHORT_SHA=${GITHUB_SHA:0:7}" >> "$GITHUB_ENV"
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+        with:
+          cleanup: true
+
+      - name: Log in to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ github.token }}
+
+      - name: Build and push image (linux/amd64)
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: Dockerfile
+          platforms: linux/amd64
+          push: true
+          tags: ghcr.io/goldschmidt-digital/e2e-tenant-fixture/e2e-app:sha-${{ env.SHORT_SHA }}
+          labels: |
+            org.opencontainers.image.source=https://github.com/${{ github.repository }}
+          cache-from: type=gha,scope=e2e-app
+          cache-to: type=gha,scope=e2e-app,mode=max
+
+      - name: Update manifest image tag
+        run: |
+          set -euo pipefail
+          sed -i -E "s/sha-([a-f0-9]{7}|placeholder)/sha-${SHORT_SHA}/g" k8s/deployment.yaml
+
+      - name: Commit manifest SHA update
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add k8s/deployment.yaml
+          if git diff --cached --quiet; then
+            echo "No manifest SHA updates to commit"
+            exit 0
+          fi
+          git commit -m "chore(cd): update e2e-app image tag to sha-${SHORT_SHA} [skip ci]"
+          git push origin HEAD:main
