@@ -1,0 +1,24 @@
+---
+name: Deploy
+
+"on":
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths: ['Dockerfile', 'index.html']
+
+permissions:
+  contents: write
+  packages: write
+
+jobs:
+  deploy:
+    uses: goldschmidt-digital/k3s-goldschmidt-platform/.github/workflows/platform-deploy.yml@main  # yamllint disable-line rule:line-length
+    with:
+      service: e2e-app
+      dockerfile: Dockerfile
+      context: .
+      manifest_path: k8s/deployment.yaml
+      image_repo: ghcr.io/goldschmidt-digital/e2e-tenant-fixture/e2e-app
+      target_branch: main
+    secrets: inherit
