@@ -50,6 +50,19 @@ jobs:
           cache-from: type=gha,scope=e2e-app
           cache-to: type=gha,scope=e2e-app,mode=max
 
+      - name: Make GHCR package public
+        run: |
+          # Packages created from private repos default to private; make public so
+          # the cluster can pull without a GHCR pull secret.
+          PKG_NAME="e2e-tenant-fixture%2Fe2e-app"
+          OWNER="goldschmidt-digital"
+          gh api "orgs/${OWNER}/packages/container/${PKG_NAME}" \
+            --method PATCH --field visibility=public 2>/dev/null \
+            && echo "✓ Package set to public" \
+            || echo "  (package may already be public or org policy blocks API — continuing)"
+        env:
+          GH_TOKEN: ${{ github.token }}
+
       - name: Update manifest image tag
         run: |
           set -euo pipefail
